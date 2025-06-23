@@ -2,7 +2,7 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const cron = require('node-cron');
-const { insertPrice } = require('./database');
+const { insertPrice, initDb } = require('./database');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -113,16 +113,19 @@ async function checkPrices() {
   }
 }
 
-// Enviar alerta de prueba al iniciar el bot
-(async () => {
-  await sendTelegramAlert('Prueba de alerta', '2025-07-01', 123, 300);
-})();
+// Inicializar la base de datos y arrancar el bot
+initDb().then(() => {
+  // Programar el cronjob cada 2 minutos
+  cron.schedule('*/2 * * * *', () => {
+    console.log('Ejecutando chequeo de precios:', new Date().toLocaleString());
+    checkPrices();
+  });
 
-// Programar el cronjob cada 2 minutos
-cron.schedule('*/2 * * * *', () => {
-  console.log('Ejecutando chequeo de precios:', new Date().toLocaleString());
+  // Ejecutar una vez al iniciar
   checkPrices();
-});
 
-// Ejecutar una vez al iniciar
-checkPrices();
+  // Enviar alerta de prueba al iniciar el bot
+  (async () => {
+    await sendTelegramAlert('Prueba de alerta', '2025-07-01', 123, 300);
+  })();
+});

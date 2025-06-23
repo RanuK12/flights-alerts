@@ -1,34 +1,33 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
 
-const db = new sqlite3.Database(path.resolve(__dirname, 'prices.db'));
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
 
-db.serialize(() => {
-  db.run(`
+// Crear tabla si no existe
+async function initDb() {
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS flight_prices (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       route TEXT,
       date TEXT,
       price INTEGER,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-});
+}
 
-function insertPrice(route, date, price) {
-  return new Promise((resolve, reject) => {
-    db.run(
-      `INSERT INTO flight_prices (route, date, price) VALUES (?, ?, ?)`,
-      [route, date, price],
-      function (err) {
-        if (err) reject(err);
-        else resolve(this.lastID);
-      }
-    );
-  });
+// Insertar nuevo precio
+async function insertPrice(route, date, price) {
+  await pool.query(
+    'INSERT INTO flight_prices (route, date, price) VALUES ($1, $2, $3)',
+    [route, date, price]
+  );
 }
 
 module.exports = {
   insertPrice,
-  db,
+  initDb,
+  pool,
 };
