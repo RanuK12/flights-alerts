@@ -84,13 +84,25 @@ async function fetchLevelDayPrices(route) {
 }
 
 // Función para enviar alerta por Telegram
-async function sendTelegramAlert(routeLabel, date, price, threshold) {
-  const message = `🚨 *ALERTA DE PRECIO BAJO*\nRuta: ${routeLabel}\nFecha: ${date}\nPrecio: $${price} USD\nUmbral: $${threshold} USD\n¡Es un buen momento para reservar tu vuelo!`;
+async function sendTelegramAlert(routeLabel, date, price, threshold, origin, destination) {
+  // Construir el link al vuelo
+  const url = `https://www.flylevel.com/flights/results?triptype=RT&origin=${origin}&destination=${destination}&outboundDate=${date}&currencyCode=USD`;
+
+  const message = `🚨 *LOW PRICE ALERT*\n` +
+    `*Route:* ${routeLabel}\n` +
+    `*From:* ${origin}\n` +
+    `*To:* ${destination}\n` +
+    `*Date:* ${date}\n` +
+    `*Price:* $${price} USD\n` +
+    `*Threshold:* $${threshold} USD\n` +
+    `[🔗 View Flight](${url})\n` +
+    `It's a great time to book your flight!`;
+
   try {
-    await bot.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'Markdown' });
-    console.log(`Alerta enviada: ${routeLabel} - $${price} (${date})`);
+    await bot.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'Markdown', disable_web_page_preview: false });
+    console.log(`Alert sent: ${routeLabel} - $${price} (${date})`);
   } catch (error) {
-    console.error('Error al enviar mensaje de Telegram:', error.message);
+    console.error('Error sending Telegram message:', error.message);
   }
 }
 
@@ -102,7 +114,14 @@ async function checkPrices() {
       try {
         await insertPrice(route.name, day.date, day.price);
         if (day.price < PRICE_THRESHOLD) {
-          await sendTelegramAlert(route.routeLabel, day.date, day.price, PRICE_THRESHOLD);
+          await sendTelegramAlert(
+            route.routeLabel,
+            day.date,
+            day.price,
+            PRICE_THRESHOLD,
+            route.origin,
+            route.destination
+          );
         } else {
           console.log(`Precio para ${route.routeLabel} el ${day.date}: $${day.price} (sin alerta)`);
         }
@@ -126,6 +145,6 @@ initDb().then(() => {
 
   // Enviar alerta de prueba al iniciar el bot
   (async () => {
-    await sendTelegramAlert('Prueba de alerta', '2025-07-01', 123, 300);
+    await sendTelegramAlert('Prueba de alerta', '2025-07-01', 123, 300, 'EZE', 'MAD');
   })();
 });

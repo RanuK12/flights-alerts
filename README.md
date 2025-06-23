@@ -9,6 +9,7 @@ A Telegram bot to monitor LEVEL flight prices between Buenos Aires and Europe, w
 - Periodically checks LEVEL flight prices (Buenos Aires → Madrid and Buenos Aires → Barcelona) for a configurable range of months.
 - Stores all price data in a PostgreSQL database.
 - Sends automatic Telegram alerts if prices drop below a configurable threshold.
+- **Alerts now include a direct link to the flight search and show both origin and destination codes.**
 - Designed to run 24/7 in the cloud (e.g., Render).
 
 ---
@@ -74,7 +75,9 @@ node index.js
 ├── database.js        # PostgreSQL connection and operations
 ├── package.json
 ├── .env.example       # Example environment variables
-└── README.md
+├── README.md
+├── LICENSE
+└── .gitignore
 ```
 
 ---
@@ -98,9 +101,12 @@ node index.js
 ```
 🚨 LOW PRICE ALERT
 Route: Buenos Aires → Madrid
+From: EZE
+To: MAD
 Date: 2025-07-15
 Price: $280 USD
 Threshold: $300 USD
+🔗 View Flight: https://www.flylevel.com/flights/results?triptype=RT&origin=EZE&destination=MAD&outboundDate=2025-07-15&currencyCode=USD
 It's a great time to book your flight!
 ```
 
