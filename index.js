@@ -121,21 +121,32 @@ async function fetchLevelDayPrices(route) {
   }
 }
 
+// --- MEJORAR MENSAJE DE ALERTA Y LINK ---
+// Para LEVEL, el link debe llevar a la búsqueda general si la URL exacta no existe
+function buildLevelFlightUrl(triptype, origin, destination, date, currencyCode) {
+  // Link a la búsqueda general de LEVEL, no a un resultado específico
+  return `https://www.flylevel.com/flights/results?triptype=${triptype}&origin=${origin}&destination=${destination}&outboundDate=${date}&currencyCode=${currencyCode}`;
+}
+
 // Función para enviar alerta por Telegram
 async function sendTelegramAlert(routeLabel, date, price, threshold, origin, destination, currencyCode, triptype = 'RT') {
-  // Construir el link exacto al vuelo encontrado
-  const url = `https://www.flylevel.com/flights/results?triptype=${triptype}&origin=${origin}&destination=${destination}&outboundDate=${date}&currencyCode=${currencyCode}`;
+  // Construir el link a la búsqueda general de LEVEL
+  const url = buildLevelFlightUrl(triptype, origin, destination, date, currencyCode);
+  const message = `✈️ *¡VUELO BARATO ENCONTRADO!*
 
-  const message = `🚨 *LOW PRICE ALERT*\n` +
-    `*Route:* ${routeLabel}\n` +
-    `*From:* ${origin}\n` +
-    `*To:* ${destination}\n` +
-    `*Date:* ${date}\n` +
-    `*Price:* ${price} ${currencyCode}\n` +
-    `*Threshold:* ${threshold} ${currencyCode}\n` +
-    `🔗 [View Flight](${url})\n` +
-    `It's a great time to book your flight!`;
+` +
+    `*Ruta:* ${routeLabel} (${origin} → ${destination})
+` +
+    `*Fecha:* ${date}
+` +
+    `*Precio encontrado:* ${price} ${currencyCode}
+` +
+    `*Umbral configurado:* ${threshold} ${currencyCode}
+` +
+    `🔗 [Ver búsqueda de vuelo en LEVEL](${url})
 
+` +
+    `Revisa condiciones, equipaje y horarios antes de comprar. ¡Aprovecha la oportunidad! 🚀`;
   try {
     await bot.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'Markdown', disable_web_page_preview: false });
     console.log(`Alert sent: ${routeLabel} - ${price} (${date})`);
@@ -270,8 +281,8 @@ async function checkSkyscannerAndAlert() {
 
 // Inicializar la base de datos y arrancar el bot
 initDb().then(() => {
-  // Programar el cronjob cada 2 minutos
-  cron.schedule('*/2 * * * *', () => {
+  // Programar el cronjob cada 15 minutos
+  cron.schedule('*/15 * * * *', () => {
     console.log('Ejecutando chequeo de precios:', new Date().toLocaleString());
     checkPrices();
     checkSkyscannerAndAlert();
