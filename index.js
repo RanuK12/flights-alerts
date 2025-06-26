@@ -193,33 +193,40 @@ function buildSkyscannerUrl(origin, destination, year, month, day = null) {
 
 async function scrapeSkyscanner(origin, destination, year, month, day = null) {
   const url = buildSkyscannerUrl(origin, destination, year, month, day);
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--no-zygote',
-      '--single-process',
-      '--window-size=1200,800'
-    ],
-    defaultViewport: {
-      width: 1200,
-      height: 800
-    }
-  });
-  const page = await browser.newPage();
-  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
-  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-  await new Promise(res => setTimeout(res, 3000 + Math.random() * 2000));
-  await page.waitForSelector('[data-test-id="listing-card-wrapper"]', { timeout: 60000 });
-  const prices = await page.$$eval('[data-test-id="listing-card-wrapper"] [data-test-id="price-text"]', nodes =>
-    nodes.map(n => parseInt(n.textContent.replace(/[^0-9]/g, '')))
-  );
-  const minPrice = prices.length > 0 ? Math.min(...prices) : null;
-  await browser.close();
-  return { url, minPrice };
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-zygote',
+        '--single-process',
+        '--window-size=1200,800'
+      ],
+      defaultViewport: {
+        width: 1200,
+        height: 800
+      }
+    });
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+    await new Promise(res => setTimeout(res, 3000 + Math.random() * 2000));
+    await page.waitForSelector('[data-test-id="listing-card-wrapper"]', { timeout: 60000 });
+    const prices = await page.$$eval('[data-test-id="listing-card-wrapper"] [data-test-id="price-text"]', nodes =>
+      nodes.map(n => parseInt(n.textContent.replace(/[^0-9]/g, '')))
+    );
+    const minPrice = prices.length > 0 ? Math.min(...prices) : null;
+    await browser.close();
+    return { url, minPrice };
+  } catch (error) {
+    if (browser) await browser.close();
+    console.error(`Error scraping Skyscanner for ${origin} → ${destination}:`, error.message);
+    return { url, minPrice: null };
+  }
 }
 
 async function checkSkyscannerAndAlert() {
@@ -229,13 +236,21 @@ async function checkSkyscannerAndAlert() {
       let diasInvalidos = [];
       if (typeof minPrice === 'number' && !isNaN(minPrice) && minPrice < SKYSCANNER_THRESHOLD) {
         const flightDate = SKYSCANNER_DAY ? `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}-${SKYSCANNER_DAY}` : `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}`;
-        const message = `🚨 *LOW PRICE ALERT*\n` +
-          `*Route:* ${origin} → ${destination}\n` +
-          `*Date:* ${flightDate}\n` +
-          `*Price:* €${minPrice} EUR\n` +
-          `*Threshold:* €${SKYSCANNER_THRESHOLD} EUR\n` +
-          `🔗 [View Flight](${url})\n` +
-          `It's a great time to book your flight!`;
+        const message = `✈️ *¡VUELO BARATO ENCONTRADO!*
+
+` +
+          `*Ruta:* ${origin} → ${destination}
+` +
+          `*Fecha:* ${flightDate}
+` +
+          `*Precio encontrado:* €${minPrice} EUR
+` +
+          `*Umbral configurado:* €${SKYSCANNER_THRESHOLD} EUR
+` +
+          `🔗 [Ver vuelo en Skyscanner](${url})
+
+` +
+          `Revisa condiciones, equipaje y horarios antes de comprar. ¡Aprovecha la oportunidad! 🚀`;
         try {
           await bot.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'Markdown', disable_web_page_preview: false });
           console.log(`Skyscanner alert sent: ${origin} → ${destination} - €${minPrice}`);
@@ -244,8 +259,6 @@ async function checkSkyscannerAndAlert() {
         }
       } else if (typeof minPrice !== 'number' || isNaN(minPrice)) {
         diasInvalidos.push(SKYSCANNER_DAY ? `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}-${SKYSCANNER_DAY}` : `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}`);
-      } else {
-        console.log(`Precio más bajo Skyscanner de ${origin} a ${destination}: ${minPrice ? minPrice + ' EUR' : 'No encontrado'} (${url})`);
       }
       if (diasInvalidos.length > 5) {
         console.warn(`No se encontraron precios válidos para: ${diasInvalidos.join(', ')}`);
