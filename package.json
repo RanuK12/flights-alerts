@@ -16,6 +16,9 @@
     "node-telegram-bot-api": "^0.66.0",
     "pdfkit": "^0.17.1",
     "pg": "^8.16.2",
+    "puppeteer": "^24.10.2",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "sqlite3": "^5.1.7"
   }
 }
