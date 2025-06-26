@@ -16,33 +16,69 @@ const baseRoutes = [
     name: 'EZE-MAD',
     origin: 'EZE',
     destination: 'MAD',
-    routeLabel: 'Buenos Aires → Madrid'
+    routeLabel: 'Buenos Aires → Madrid',
+    triptype: 'RT',
+    currencyCode: 'USD',
+    threshold: 300
   },
   {
     name: 'EZE-BCN',
     origin: 'EZE',
     destination: 'BCN',
-    routeLabel: 'Buenos Aires → Barcelona'
+    routeLabel: 'Buenos Aires → Barcelona',
+    triptype: 'RT',
+    currencyCode: 'USD',
+    threshold: 300
+  },
+  {
+    name: 'BCN-MIA',
+    origin: 'BCN',
+    destination: 'MIA',
+    routeLabel: 'Barcelona → Miami',
+    triptype: 'RT',
+    currencyCode: 'EUR',
+    threshold: 130,
+    outboundDate: '2025-08-29',
+    months: ['09'],
+    year: 2025
+  },
+  {
+    name: 'AMS-BOS',
+    origin: 'AMS',
+    destination: 'BOS',
+    routeLabel: 'Amsterdam → Boston',
+    triptype: 'OW',
+    currencyCode: 'EUR',
+    threshold: 400,
+    months: ['07'],
+    year: 2025
   }
 ];
 
 // Meses a consultar (julio a octubre 2025)
-const months = [7, 8, 9, 10];
-const year = 2025;
+const defaultMonths = [7, 8, 9, 10];
+const defaultYear = 2025;
 
 // Genera todas las combinaciones de rutas y meses
 function generateRoutes() {
   const routes = [];
   for (const base of baseRoutes) {
+    const months = base.months || defaultMonths.map(m => String(m).padStart(2, '0'));
+    const year = base.year || defaultYear;
     for (const month of months) {
-      // outboundDate: primer día del mes
-      const outboundDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      // outboundDate: primer día del mes, salvo que se especifique
+      const outboundDate = base.outboundDate || `${year}-${String(month).padStart(2, '0')}-01`;
       routes.push({
         name: base.name,
-        url: `https://www.flylevel.com/nwe/flights/api/calendar/?triptype=RT&origin=${base.origin}&destination=${base.destination}&outboundDate=${outboundDate}&month=${String(month).padStart(2, '0')}&year=${year}&currencyCode=USD`,
+        url: `https://www.flylevel.com/nwe/flights/api/calendar/?triptype=${base.triptype}&origin=${base.origin}&destination=${base.destination}&outboundDate=${outboundDate}&month=${month}&year=${year}&currencyCode=${base.currencyCode}`,
         routeLabel: base.routeLabel,
-        month: String(month).padStart(2, '0'),
-        year: year
+        month: month,
+        year: year,
+        origin: base.origin,
+        destination: base.destination,
+        threshold: base.threshold,
+        currencyCode: base.currencyCode,
+        triptype: base.triptype
       });
     }
   }
@@ -84,23 +120,23 @@ async function fetchLevelDayPrices(route) {
 }
 
 // Función para enviar alerta por Telegram
-async function sendTelegramAlert(routeLabel, date, price, threshold, origin, destination) {
-  // Construir el link al vuelo
-  const url = `https://www.flylevel.com/flights/results?triptype=RT&origin=${origin}&destination=${destination}&outboundDate=${date}&currencyCode=USD`;
+async function sendTelegramAlert(routeLabel, date, price, threshold, origin, destination, currencyCode, triptype = 'RT') {
+  // Construir el link exacto al vuelo encontrado
+  const url = `https://www.flylevel.com/flights/results?triptype=${triptype}&origin=${origin}&destination=${destination}&outboundDate=${date}&currencyCode=${currencyCode}`;
 
   const message = `🚨 *LOW PRICE ALERT*\n` +
     `*Route:* ${routeLabel}\n` +
     `*From:* ${origin}\n` +
     `*To:* ${destination}\n` +
     `*Date:* ${date}\n` +
-    `*Price:* $${price} USD\n` +
-    `*Threshold:* $${threshold} USD\n` +
-    `[🔗 View Flight](${url})\n` +
+    `*Price:* ${price} ${currencyCode}\n` +
+    `*Threshold:* ${threshold} ${currencyCode}\n` +
+    `🔗 [View Flight](${url})\n` +
     `It's a great time to book your flight!`;
 
   try {
     await bot.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'Markdown', disable_web_page_preview: false });
-    console.log(`Alert sent: ${routeLabel} - $${price} (${date})`);
+    console.log(`Alert sent: ${routeLabel} - ${price} (${date})`);
   } catch (error) {
     console.error('Error sending Telegram message:', error.message);
   }
@@ -113,17 +149,19 @@ async function checkPrices() {
     for (const day of dayPrices) {
       try {
         await insertPrice(route.name, day.date, day.price);
-        if (day.price < PRICE_THRESHOLD) {
+        if (day.price < route.threshold) {
           await sendTelegramAlert(
             route.routeLabel,
             day.date,
             day.price,
-            PRICE_THRESHOLD,
+            route.threshold,
             route.origin,
-            route.destination
+            route.destination,
+            route.currencyCode,
+            route.triptype
           );
         } else {
-          console.log(`Precio para ${route.routeLabel} el ${day.date}: $${day.price} (sin alerta)`);
+          console.log(`Precio para ${route.routeLabel} el ${day.date}: ${day.price} (${route.currencyCode}) (sin alerta)`);
         }
       } catch (err) {
         console.error('Error guardando o notificando:', err.message);
@@ -145,6 +183,6 @@ initDb().then(() => {
 
   // Enviar alerta de prueba al iniciar el bot
   (async () => {
-    await sendTelegramAlert('Prueba de alerta', '2025-07-01', 123, 300, 'EZE', 'MAD');
+    await sendTelegramAlert('Prueba de alerta', '2025-07-01', 123, 300, 'EZE', 'MAD', 'USD');
   })();
 });
