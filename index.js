@@ -226,6 +226,7 @@ async function checkSkyscannerAndAlert() {
   for (const origin of SKYSCANNER_ORIGINS) {
     for (const destination of SKYSCANNER_DESTINATIONS) {
       const { url, minPrice } = await scrapeSkyscanner(origin, destination, SKYSCANNER_YEAR, SKYSCANNER_MONTH, SKYSCANNER_DAY);
+      let diasInvalidos = [];
       if (typeof minPrice === 'number' && !isNaN(minPrice) && minPrice < SKYSCANNER_THRESHOLD) {
         const flightDate = SKYSCANNER_DAY ? `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}-${SKYSCANNER_DAY}` : `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}`;
         const message = `🚨 *LOW PRICE ALERT*\n` +
@@ -242,9 +243,12 @@ async function checkSkyscannerAndAlert() {
           console.error('Error sending Skyscanner Telegram message:', error.message);
         }
       } else if (typeof minPrice !== 'number' || isNaN(minPrice)) {
-        console.warn(`Precio inválido Skyscanner para ${origin} → ${destination}:`, minPrice);
+        diasInvalidos.push(SKYSCANNER_DAY ? `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}-${SKYSCANNER_DAY}` : `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}`);
       } else {
         console.log(`Precio más bajo Skyscanner de ${origin} a ${destination}: ${minPrice ? minPrice + ' EUR' : 'No encontrado'} (${url})`);
+      }
+      if (diasInvalidos.length > 5) {
+        console.warn(`No se encontraron precios válidos para: ${diasInvalidos.join(', ')}`);
       }
       await new Promise(res => setTimeout(res, 5000 + Math.random() * 3000));
     }
