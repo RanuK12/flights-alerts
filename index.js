@@ -3,6 +3,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const cron = require('node-cron');
 const { insertPrice, initDb } = require('./database');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -149,7 +151,7 @@ async function checkPrices() {
     for (const day of dayPrices) {
       try {
         await insertPrice(route.name, day.date, day.price);
-        if (day.price < route.threshold) {
+        if (typeof day.price === 'number' && !isNaN(day.price) && day.price < route.threshold) {
           await sendTelegramAlert(
             route.routeLabel,
             day.date,
@@ -160,6 +162,8 @@ async function checkPrices() {
             route.currencyCode,
             route.triptype
           );
+        } else if (typeof day.price !== 'number' || isNaN(day.price)) {
+          console.warn(`Precio inválido para ${route.routeLabel} el ${day.date}:`, day.price);
         } else {
           console.log(`Precio para ${route.routeLabel} el ${day.date}: ${day.price} (${route.currencyCode}) (sin alerta)`);
         }
@@ -170,16 +174,92 @@ async function checkPrices() {
   }
 }
 
+// --- INTEGRACIÓN SCRAPER SKYSCANNER ---
+const SKYSCANNER_ORIGINS = ['FCO', 'MAD', 'BCN'];
+const SKYSCANNER_DESTINATIONS = ['EZE', 'COR'];
+const SKYSCANNER_YEAR = 2025;
+const SKYSCANNER_MONTH = '09'; // septiembre
+const SKYSCANNER_DAY = '10'; // día fijo o null para todo el mes
+const SKYSCANNER_CURRENCY = 'EUR';
+const SKYSCANNER_THRESHOLD = 500;
+
+function buildSkyscannerUrl(origin, destination, year, month, day = null) {
+  if (day) {
+    return `https://www.skyscanner.es/transporte/vuelos/${origin.toLowerCase()}/${destination.toLowerCase()}/${year}${month}${day}/?currency=${SKYSCANNER_CURRENCY}`;
+  } else {
+    return `https://www.skyscanner.es/transporte/vuelos/${origin.toLowerCase()}/${destination.toLowerCase()}/${year}${month}/?currency=${SKYSCANNER_CURRENCY}`;
+  }
+}
+
+async function scrapeSkyscanner(origin, destination, year, month, day = null) {
+  const url = buildSkyscannerUrl(origin, destination, year, month, day);
+  const browser = await puppeteer.launch({
+    headless: false,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--window-size=1200,800'
+    ],
+    defaultViewport: {
+      width: 1200,
+      height: 800
+    }
+  });
+  const page = await browser.newPage();
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
+  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+  await new Promise(res => setTimeout(res, 3000 + Math.random() * 2000));
+  await page.waitForSelector('[data-test-id="listing-card-wrapper"]', { timeout: 60000 });
+  const prices = await page.$$eval('[data-test-id="listing-card-wrapper"] [data-test-id="price-text"]', nodes =>
+    nodes.map(n => parseInt(n.textContent.replace(/[^0-9]/g, '')))
+  );
+  const minPrice = prices.length > 0 ? Math.min(...prices) : null;
+  await browser.close();
+  return { url, minPrice };
+}
+
+async function checkSkyscannerAndAlert() {
+  for (const origin of SKYSCANNER_ORIGINS) {
+    for (const destination of SKYSCANNER_DESTINATIONS) {
+      const { url, minPrice } = await scrapeSkyscanner(origin, destination, SKYSCANNER_YEAR, SKYSCANNER_MONTH, SKYSCANNER_DAY);
+      if (typeof minPrice === 'number' && !isNaN(minPrice) && minPrice < SKYSCANNER_THRESHOLD) {
+        const flightDate = SKYSCANNER_DAY ? `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}-${SKYSCANNER_DAY}` : `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}`;
+        const message = `🚨 *LOW PRICE ALERT*\n` +
+          `*Route:* ${origin} → ${destination}\n` +
+          `*Date:* ${flightDate}\n` +
+          `*Price:* €${minPrice} EUR\n` +
+          `*Threshold:* €${SKYSCANNER_THRESHOLD} EUR\n` +
+          `🔗 [View Flight](${url})\n` +
+          `It's a great time to book your flight!`;
+        try {
+          await bot.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'Markdown', disable_web_page_preview: false });
+          console.log(`Skyscanner alert sent: ${origin} → ${destination} - €${minPrice}`);
+        } catch (error) {
+          console.error('Error sending Skyscanner Telegram message:', error.message);
+        }
+      } else if (typeof minPrice !== 'number' || isNaN(minPrice)) {
+        console.warn(`Precio inválido Skyscanner para ${origin} → ${destination}:`, minPrice);
+      } else {
+        console.log(`Precio más bajo Skyscanner de ${origin} a ${destination}: ${minPrice ? minPrice + ' EUR' : 'No encontrado'} (${url})`);
+      }
+      await new Promise(res => setTimeout(res, 5000 + Math.random() * 3000));
+    }
+  }
+}
+
 // Inicializar la base de datos y arrancar el bot
 initDb().then(() => {
   // Programar el cronjob cada 2 minutos
   cron.schedule('*/2 * * * *', () => {
     console.log('Ejecutando chequeo de precios:', new Date().toLocaleString());
     checkPrices();
+    checkSkyscannerAndAlert();
   });
 
   // Ejecutar una vez al iniciar
   checkPrices();
+  checkSkyscannerAndAlert();
 
   // Enviar alerta de prueba al iniciar el bot
   (async () => {
