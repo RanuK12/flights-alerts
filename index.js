@@ -194,11 +194,14 @@ function buildSkyscannerUrl(origin, destination, year, month, day = null) {
 async function scrapeSkyscanner(origin, destination, year, month, day = null) {
   const url = buildSkyscannerUrl(origin, destination, year, month, day);
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: true,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-zygote',
+      '--single-process',
       '--window-size=1200,800'
     ],
     defaultViewport: {
