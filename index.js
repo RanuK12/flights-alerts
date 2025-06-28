@@ -408,3 +408,13 @@ initDb().then(() => {
     await sendTelegramAlert('Prueba de alerta', '2025-07-01', 123, 300, 'EZE', 'MAD', 'USD');
   })();
 });
+
+// Exportar funciones para testing
+module.exports = {
+  buildLevelFlightUrl,
+  sendTelegramAlert,
+  buildSkyscannerUrl,
+  scrapeSkyscanner,
+  checkPrices,
+  checkSkyscannerAndAlert
+};
