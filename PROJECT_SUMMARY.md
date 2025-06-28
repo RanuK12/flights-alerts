@@ -1,83 +1,83 @@
-# 📋 Resumen del Proyecto - Flight Price Bot
+# 📋 Project Summary - Flight Price Bot
 
-## 🎯 Estado Actual del Proyecto
+## 🎯 Current Project Status
 
-### ✅ **Mejoras Implementadas y Verificadas**
+### ✅ **Implemented and Verified Improvements**
 
-1. **URLs de LEVEL Corregidas**
-   - ✅ URLs específicas con parámetros completos
-   - ✅ Incluyen pasajeros, tipo de viaje, moneda
-   - ✅ Links funcionales que llevan a búsquedas reales
+1. **Fixed LEVEL URLs**
+   - ✅ Specific URLs with complete parameters
+   - ✅ Include passengers, trip type, currency
+   - ✅ Functional links that lead to real searches
 
-2. **Alertas Mejoradas**
-   - ✅ Fechas legibles en español
-   - ✅ Cálculo automático de ahorro y porcentaje
-   - ✅ Formato estructurado y claro
-   - ✅ Emojis informativos
+2. **Improved Alerts**
+   - ✅ Readable dates in Spanish
+   - ✅ Automatic savings calculation and percentage
+   - ✅ Structured and clear format
+   - ✅ Informative emojis
 
-3. **Scraping de Skyscanner Robusto**
-   - ✅ Múltiples selectores CSS
-   - ✅ Extracción alternativa de texto
-   - ✅ Headers realistas
-   - ✅ Manejo de errores mejorado
+3. **Robust Skyscanner Scraping**
+   - ✅ Multiple CSS selectors
+   - ✅ Alternative text extraction
+   - ✅ Realistic headers
+   - ✅ Improved error handling
 
-4. **Herramientas de Desarrollo**
-   - ✅ Scripts de prueba incluidos
-   - ✅ Demo de alertas en consola
-   - ✅ Herramienta para obtener Chat ID
-   - ✅ Documentación completa
+4. **Development Tools**
+   - ✅ Included test scripts
+   - ✅ Console alert demos
+   - ✅ Chat ID retrieval tool
+   - ✅ Complete documentation
 
-## 📊 Métricas de Mejora
+## 📊 Improvement Metrics
 
-| Aspecto | Antes | Después | Mejora |
-|---------|-------|---------|--------|
-| **URLs LEVEL** | Genéricas, no funcionaban | Específicas, funcionales | 100% |
-| **Fechas** | 2025-07-15 | lunes, 15 de julio de 2025 | 100% |
-| **Ahorro** | No se mostraba | 50 USD (16.7%) | 100% |
-| **Scraping** | Un selector, fallaba | Múltiples selectores + alternativa | 90% |
-| **Testing** | No había | 8 scripts de prueba | 100% |
-| **Documentación** | Básica | Completa y detallada | 100% |
+| Aspect | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| **LEVEL URLs** | Generic, didn't work | Specific, functional | 100% |
+| **Dates** | 2025-07-15 | lunes, 15 de julio de 2025 | 100% |
+| **Savings** | Not shown | 50 USD (16.7%) | 100% |
+| **Scraping** | Single selector, failed | Multiple selectors + alternative | 90% |
+| **Testing** | None | 8 test scripts | 100% |
+| **Documentation** | Basic | Complete and detailed | 100% |
 
-## 🗂️ Archivos del Proyecto
+## 🗂️ Project Files
 
-### **Archivos Principales**
-- `index.js` - Bot principal con todas las mejoras
-- `database.js` - Conexión PostgreSQL
-- `skyscanner_scraper.js` - Scraping mejorado
+### **Main Files**
+- `index.js` - Main bot with all improvements
+- `database.js` - PostgreSQL connection
+- `skyscanner_scraper.js` - Improved scraping
 
-### **Scripts de Prueba**
-- `test-alerts-only.js` - Test de funciones sin DB
-- `test-improvements.js` - Test completo con Telegram
-- `test-simple.js` - Demo simple de alertas
-- `get-chat-id.js` - Herramienta para obtener Chat ID
-- `demo-alerts.js` - Demo de alertas mejoradas
-- `simple-demo.js` - Demo sin caracteres especiales
-- `test-console.js` - Test en consola
-- `test-format.js` - Test de formato
+### **Test Scripts**
+- `test-alerts-only.js` - Function testing without DB
+- `test-improvements.js` - Complete Telegram testing
+- `test-simple.js` - Simple alert demo
+- `get-chat-id.js` - Chat ID retrieval tool
+- `demo-alerts.js` - Improved alert demo
+- `simple-demo.js` - Demo without special characters
+- `test-console.js` - Console testing
+- `test-format.js` - Format testing
 
-### **Documentación**
-- `README.md` - Documentación principal actualizada
-- `IMPROVEMENTS.md` - Detalles de mejoras
-- `PROJECT_SUMMARY.md` - Este resumen
+### **Documentation**
+- `README.md` - Updated main documentation
+- `IMPROVEMENTS.md` - Improvement details
+- `PROJECT_SUMMARY.md` - This summary
 
-## 🧪 Resultados de Testing
+## 🧪 Testing Results
 
-### **Test Exitoso - Funciones Verificadas**
+### **Successful Test - Verified Functions**
 
 ```bash
-✅ Función buildLevelFlightUrl: PASO
-✅ Formateo de fecha: OK
-✅ Cálculo de ahorro: OK
-✅ Generación de mensaje: OK
+✅ buildLevelFlightUrl function: PASS
+✅ Date formatting: OK
+✅ Savings calculation: OK
+✅ Message generation: OK
 ```
 
-### **URLs Generadas Correctamente**
+### **Correctly Generated URLs**
 
 ```
 https://www.flylevel.com/flights/search?triptype=RT&origin=EZE&destination=MAD&outboundDate=2025-07-15&currencyCode=USD&adults=1&children=0&infants=0
 ```
 
-### **Mensajes de Alerta Mejorados**
+### **Improved Alert Messages**
 
 ```
 ✈️ ¡VUELO BARATO ENCONTRADO!
@@ -88,15 +88,15 @@ Precio encontrado: 250 USD
 Umbral configurado: 300 USD
 💰 Ahorro: 50 USD (16.7%)
 
-🔗 Ver vuelo en LEVEL: [URL específica]
+🔗 Ver vuelo en LEVEL: [Specific URL]
 
 ⚠️ Importante: Revisa condiciones, equipaje y horarios antes de comprar.
 ¡Aprovecha la oportunidad! 🚀
 ```
 
-## 🚀 Funcionalidades Implementadas
+## 🚀 Implemented Features
 
-### **Monitoreo de Rutas**
+### **Route Monitoring**
 
 **LEVEL Airlines:**
 - EZE → MAD (Buenos Aires → Madrid)
@@ -105,81 +105,81 @@ Umbral configurado: 300 USD
 - AMS → BOS (Amsterdam → Boston)
 
 **Skyscanner:**
-- FCO → EZE (Roma → Buenos Aires)
+- FCO → EZE (Rome → Buenos Aires)
 - MAD → EZE (Madrid → Buenos Aires)
 - BCN → EZE (Barcelona → Buenos Aires)
-- FCO → COR (Roma → Córdoba)
+- FCO → COR (Rome → Córdoba)
 - MAD → COR (Madrid → Córdoba)
 - BCN → COR (Barcelona → Córdoba)
 
-### **Características Técnicas**
+### **Technical Features**
 
-- **Scraping robusto** con múltiples selectores CSS
-- **Headers realistas** para evitar detección
-- **Delays aleatorios** entre requests
-- **Manejo de errores** mejorado
-- **Logging detallado** para debugging
-- **Configuración flexible** de parámetros
+- **Robust scraping** with multiple CSS selectors
+- **Realistic headers** to avoid detection
+- **Random delays** between requests
+- **Improved error handling**
+- **Detailed logging** for debugging
+- **Flexible configuration** of parameters
 
-## 📈 Próximos Pasos Recomendados
+## 📈 Recommended Next Steps
 
-### **Inmediato (1-2 días)**
-1. **Configurar Chat ID correcto** usando `get-chat-id.js`
-2. **Probar con Telegram** usando `test-improvements.js`
-3. **Configurar base de datos** PostgreSQL
-4. **Desplegar en Render** o Heroku
+### **Immediate (1-2 days)**
+1. **Configure correct Chat ID** using `get-chat-id.js`
+2. **Test with Telegram** using `test-improvements.js`
+3. **Configure PostgreSQL database**
+4. **Deploy on Render** or Heroku
 
-### **Corto Plazo (1-2 semanas)**
-1. **Monitorear scraping** de Skyscanner
-2. **Ajustar selectores** si es necesario
-3. **Optimizar delays** para mejor rendimiento
-4. **Agregar más rutas** según necesidades
+### **Short Term (1-2 weeks)**
+1. **Monitor Skyscanner scraping**
+2. **Adjust selectors** if necessary
+3. **Optimize delays** for better performance
+4. **Add more routes** as needed
 
-### **Mediano Plazo (1-2 meses)**
-1. **Dashboard web** para visualización
-2. **Notificaciones por email** como respaldo
-3. **Más aerolíneas** (Iberia, Air Europa)
-4. **API REST** para integraciones
+### **Medium Term (1-2 months)**
+1. **Web dashboard** for visualization
+2. **Email notifications** as backup
+3. **More airlines** (Iberia, Air Europa)
+4. **REST API** for integrations
 
-## 🛠️ Comandos Útiles
+## 🛠️ Useful Commands
 
 ```bash
-# Obtener Chat ID
+# Get Chat ID
 node get-chat-id.js
 
-# Test de funciones
+# Test functions
 node test-alerts-only.js
 
-# Demo de alertas
+# Alert demo
 node simple-demo.js
 
-# Test completo
+# Complete test
 node test-improvements.js
 
-# Ejecutar bot
+# Run bot
 node index.js
 ```
 
-## 📋 Checklist de Verificación
+## 📋 Verification Checklist
 
-- [x] URLs de LEVEL funcionan correctamente
-- [x] Alertas se envían con formato mejorado
-- [x] Scraping de Skyscanner es confiable
-- [x] Cálculos de ahorro son correctos
-- [x] Scripts de prueba funcionan
-- [x] Documentación está completa
-- [ ] Chat ID configurado correctamente
-- [ ] Base de datos configurada
-- [ ] Bot desplegado en producción
+- [x] LEVEL URLs work correctly
+- [x] Alerts sent with improved format
+- [x] Skyscanner scraping is reliable
+- [x] Savings calculations are correct
+- [x] Test scripts work
+- [x] Documentation is complete
+- [ ] Chat ID configured correctly
+- [ ] Database configured
+- [ ] Bot deployed to production
 
-## 🎉 Conclusión
+## 🎉 Conclusion
 
-El proyecto **Flight Price Bot** ha sido completamente mejorado y está listo para uso en producción. Todas las funcionalidades principales han sido implementadas, probadas y documentadas.
+The **Flight Price Bot** project has been completely improved and is ready for production use. All main functionalities have been implemented, tested, and documented.
 
-**Estado del proyecto: ✅ LISTO PARA PRODUCCIÓN**
+**Project status: ✅ READY FOR PRODUCTION**
 
 ---
 
-**Última actualización:** Diciembre 2024  
-**Versión:** 2.0.0  
-**Estado:** Completado y verificado 
+**Last updated:** June 2025  
+**Version:** 2.0.0  
+**Status:** Completed and verified 
