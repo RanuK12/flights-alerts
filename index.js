@@ -124,32 +124,47 @@ async function fetchLevelDayPrices(route) {
 // --- MEJORAR MENSAJE DE ALERTA Y LINK ---
 // Para LEVEL, el link debe llevar a la búsqueda general si la URL exacta no existe
 function buildLevelFlightUrl(triptype, origin, destination, date, currencyCode) {
-  // Link a la búsqueda general de LEVEL, no a un resultado específico
-  return `https://www.flylevel.com/flights/results?triptype=${triptype}&origin=${origin}&destination=${destination}&outboundDate=${date}&currencyCode=${currencyCode}`;
+  // Link mejorado a la búsqueda de LEVEL con parámetros más específicos
+  const formattedDate = date.replace(/-/g, '');
+  return `https://www.flylevel.com/flights/search?triptype=${triptype}&origin=${origin}&destination=${destination}&outboundDate=${date}&currencyCode=${currencyCode}&adults=1&children=0&infants=0`;
 }
 
 // Función para enviar alerta por Telegram
 async function sendTelegramAlert(routeLabel, date, price, threshold, origin, destination, currencyCode, triptype = 'RT') {
   // Construir el link a la búsqueda general de LEVEL
   const url = buildLevelFlightUrl(triptype, origin, destination, date, currencyCode);
+  
+  // Formatear la fecha para mejor legibilidad
+  const formattedDate = new Date(date).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  
+  // Calcular el ahorro
+  const savings = threshold - price;
+  const savingsPercentage = ((savings / threshold) * 100).toFixed(1);
+  
   const message = `✈️ *¡VUELO BARATO ENCONTRADO!*
 
-` +
-    `*Ruta:* ${routeLabel} (${origin} → ${destination})
-` +
-    `*Fecha:* ${date}
-` +
-    `*Precio encontrado:* ${price} ${currencyCode}
-` +
-    `*Umbral configurado:* ${threshold} ${currencyCode}
-` +
-    `🔗 [Ver búsqueda de vuelo en LEVEL](${url})
+*Ruta:* ${routeLabel} (${origin} → ${destination})
+*Fecha:* ${formattedDate}
+*Precio encontrado:* ${price} ${currencyCode}
+*Umbral configurado:* ${threshold} ${currencyCode}
+*💰 Ahorro:* ${savings} ${currencyCode} (${savingsPercentage}%)
 
-` +
-    `Revisa condiciones, equipaje y horarios antes de comprar. ¡Aprovecha la oportunidad! 🚀`;
+🔗 [Ver vuelo en LEVEL](${url})
+
+⚠️ *Importante:* Revisa condiciones, equipaje y horarios antes de comprar.
+¡Aprovecha la oportunidad! 🚀`;
+  
   try {
-    await bot.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'Markdown', disable_web_page_preview: false });
-    console.log(`Alert sent: ${routeLabel} - ${price} (${date})`);
+    await bot.sendMessage(TELEGRAM_CHAT_ID, message, { 
+      parse_mode: 'Markdown', 
+      disable_web_page_preview: false 
+    });
+    console.log(`Alert sent: ${routeLabel} - ${price} ${currencyCode} (${date})`);
   } catch (error) {
     console.error('Error sending Telegram message:', error.message);
   }
@@ -215,24 +230,98 @@ async function scrapeSkyscanner(origin, destination, year, month, day = null) {
         '--disable-gpu',
         '--no-zygote',
         '--single-process',
-        '--window-size=1200,800'
+        '--window-size=1200,800',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
       ],
       defaultViewport: {
         width: 1200,
         height: 800
       }
     });
+    
     const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
+    
+    // Configurar user agent más realista
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    // Configurar headers adicionales
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'DNT': '1',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1'
+    });
+    
+    // Navegar a la página
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-    await new Promise(res => setTimeout(res, 3000 + Math.random() * 2000));
-    await page.waitForSelector('[data-test-id="listing-card-wrapper"]', { timeout: 60000 });
-    const prices = await page.$$eval('[data-test-id="listing-card-wrapper"] [data-test-id="price-text"]', nodes =>
-      nodes.map(n => parseInt(n.textContent.replace(/[^0-9]/g, '')))
-    );
+    
+    // Espera aleatoria para simular comportamiento humano
+    await new Promise(res => setTimeout(res, 4000 + Math.random() * 3000));
+    
+    // Intentar múltiples selectores para encontrar precios
+    let prices = [];
+    const selectors = [
+      '[data-test-id="listing-card-wrapper"] [data-test-id="price-text"]',
+      '[data-test-id="price-text"]',
+      '.price-text',
+      '[data-testid="price-text"]',
+      '.BpkText_bpk-text__',
+      '.BpkText_bpk-text__2NhLt',
+      '[class*="price"]',
+      '[class*="Price"]',
+      '.price',
+      '.Price'
+    ];
+    
+    for (const selector of selectors) {
+      try {
+        await page.waitForSelector(selector, { timeout: 10000 });
+        const foundPrices = await page.$$eval(selector, nodes =>
+          nodes.map(n => {
+            const text = n.textContent || n.innerText || '';
+            const price = parseInt(text.replace(/[^0-9]/g, ''));
+            return isNaN(price) ? null : price;
+          }).filter(p => p !== null)
+        );
+        if (foundPrices.length > 0) {
+          prices = foundPrices;
+          console.log(`Found ${prices.length} prices using selector: ${selector}`);
+          break;
+        }
+      } catch (e) {
+        console.log(`Selector ${selector} not found, trying next...`);
+        continue;
+      }
+    }
+    
+    // Si no encontramos precios con selectores específicos, intentar extraer de todo el texto
+    if (prices.length === 0) {
+      console.log('Trying alternative price extraction method...');
+      const pageText = await page.evaluate(() => document.body.innerText);
+      const priceMatches = pageText.match(/€\s*(\d+)/g) || pageText.match(/(\d+)\s*EUR/g);
+      if (priceMatches) {
+        prices = priceMatches.map(match => {
+          const price = parseInt(match.replace(/[^0-9]/g, ''));
+          return isNaN(price) ? null : price;
+        }).filter(p => p !== null);
+      }
+    }
+    
     const minPrice = prices.length > 0 ? Math.min(...prices) : null;
+    
+    if (minPrice) {
+      console.log(`Successfully scraped ${origin} → ${destination}: €${minPrice}`);
+    } else {
+      console.log(`No prices found for ${origin} → ${destination}`);
+    }
+    
     await browser.close();
     return { url, minPrice };
+    
   } catch (error) {
     if (browser) await browser.close();
     console.error(`Error scraping Skyscanner for ${origin} → ${destination}:`, error.message);
@@ -247,33 +336,55 @@ async function checkSkyscannerAndAlert() {
       let diasInvalidos = [];
       if (typeof minPrice === 'number' && !isNaN(minPrice) && minPrice < SKYSCANNER_THRESHOLD) {
         const flightDate = SKYSCANNER_DAY ? `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}-${SKYSCANNER_DAY}` : `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}`;
+        
+        // Formatear la fecha para mejor legibilidad
+        const formattedDate = SKYSCANNER_DAY 
+          ? new Date(flightDate).toLocaleDateString('es-ES', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })
+          : `${SKYSCANNER_YEAR} - ${new Date(flightDate).toLocaleDateString('es-ES', { month: 'long' })}`;
+        
+        // Calcular el ahorro
+        const savings = SKYSCANNER_THRESHOLD - minPrice;
+        const savingsPercentage = ((savings / SKYSCANNER_THRESHOLD) * 100).toFixed(1);
+        
         const message = `✈️ *¡VUELO BARATO ENCONTRADO!*
 
-` +
-          `*Ruta:* ${origin} → ${destination}
-` +
-          `*Fecha:* ${flightDate}
-` +
-          `*Precio encontrado:* €${minPrice} EUR
-` +
-          `*Umbral configurado:* €${SKYSCANNER_THRESHOLD} EUR
-` +
-          `🔗 [Ver vuelo en Skyscanner](${url})
+*Ruta:* ${origin} → ${destination}
+*Fecha:* ${formattedDate}
+*Precio encontrado:* €${minPrice} EUR
+*Umbral configurado:* €${SKYSCANNER_THRESHOLD} EUR
+*💰 Ahorro:* €${savings} EUR (${savingsPercentage}%)
 
-` +
-          `Revisa condiciones, equipaje y horarios antes de comprar. ¡Aprovecha la oportunidad! 🚀`;
+🔗 [Ver vuelo en Skyscanner](${url})
+
+⚠️ *Importante:* Revisa condiciones, equipaje y horarios antes de comprar.
+¡Aprovecha la oportunidad! 🚀`;
+        
         try {
-          await bot.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'Markdown', disable_web_page_preview: false });
+          await bot.sendMessage(TELEGRAM_CHAT_ID, message, { 
+            parse_mode: 'Markdown', 
+            disable_web_page_preview: false 
+          });
           console.log(`Skyscanner alert sent: ${origin} → ${destination} - €${minPrice}`);
         } catch (error) {
           console.error('Error sending Skyscanner Telegram message:', error.message);
         }
       } else if (typeof minPrice !== 'number' || isNaN(minPrice)) {
         diasInvalidos.push(SKYSCANNER_DAY ? `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}-${SKYSCANNER_DAY}` : `${SKYSCANNER_YEAR}-${SKYSCANNER_MONTH}`);
+        console.log(`No se encontraron precios válidos para ${origin} → ${destination}`);
+      } else {
+        console.log(`Precio para ${origin} → ${destination}: €${minPrice} (sin alerta)`);
       }
+      
       if (diasInvalidos.length > 5) {
         console.warn(`No se encontraron precios válidos para: ${diasInvalidos.join(', ')}`);
       }
+      
+      // Espera aleatoria entre búsquedas para evitar detección
       await new Promise(res => setTimeout(res, 5000 + Math.random() * 3000));
     }
   }
