@@ -122,11 +122,10 @@ async function fetchLevelDayPrices(route) {
 }
 
 // --- MEJORAR MENSAJE DE ALERTA Y LINK ---
-// Para LEVEL, el link debe llevar a la búsqueda general si la URL exacta no existe
+// Para LEVEL, el link debe llevar a la búsqueda general (sin fecha) para evitar 404
 function buildLevelFlightUrl(triptype, origin, destination, date, currencyCode) {
-  // Link mejorado a la búsqueda de LEVEL con parámetros más específicos
-  const formattedDate = date.replace(/-/g, '');
-  return `https://www.flylevel.com/flights/search?triptype=${triptype}&origin=${origin}&destination=${destination}&outboundDate=${date}&currencyCode=${currencyCode}&adults=1&children=0&infants=0`;
+  // Link robusto a la búsqueda general de LEVEL
+  return `https://www.flylevel.com/flights/search?origin=${origin}&destination=${destination}&adults=1&children=0&infants=0`;
 }
 
 // Función para enviar alerta por Telegram
