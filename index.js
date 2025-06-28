@@ -122,9 +122,8 @@ async function fetchLevelDayPrices(route) {
 }
 
 // --- MEJORAR MENSAJE DE ALERTA Y LINK ---
-// Para LEVEL, el link debe llevar a la búsqueda general (sin fecha) para evitar 404
+// LEVEL link: always use general search (no date, no currency, no triptype)
 function buildLevelFlightUrl(triptype, origin, destination, date, currencyCode) {
-  // Link robusto a la búsqueda general de LEVEL
   return `https://www.flylevel.com/flights/search?origin=${origin}&destination=${destination}&adults=1&children=0&infants=0`;
 }
 
