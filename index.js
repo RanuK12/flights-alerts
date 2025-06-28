@@ -2,9 +2,9 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const cron = require('node-cron');
-const { insertPrice, initDb } = require('./database');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const { insertPrice, initDb } = require('./database');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -389,7 +389,6 @@ async function checkSkyscannerAndAlert() {
   }
 }
 
-// Inicializar la base de datos y arrancar el bot
 initDb().then(() => {
   // Programar el cronjob cada 15 minutos
   cron.schedule('*/15 * * * *', () => {
