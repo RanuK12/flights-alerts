@@ -6,31 +6,73 @@ const { scrapeSkyscanner } = require('./skyscanner_scraper');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-const PRICE_THRESHOLD = parseInt(process.env.PRICE_THRESHOLD, 10) || 500;
 const TELEGRAM_ENABLED = Boolean(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID);
 
 const bot = TELEGRAM_ENABLED
   ? new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: false })
   : null;
 
-// Rutas de vuelos a monitorear
-const routes = [
-  { origin: 'MAD', destination: 'COR', name: 'Madrid → Córdoba' },
-  { origin: 'BCN', destination: 'COR', name: 'Barcelona → Córdoba' },
-  { origin: 'FCO', destination: 'COR', name: 'Roma → Córdoba' },
+// ─── Rutas Italia → Tokio (sep/oct 2026, ida y vuelta ~10 días) ───────────────
+// Precios reales relevados en Kayak el 15/04/2026 (FCO → TYO, sep 2026):
+//   Mínimo real:  ~€1,250 EUR (ITA Airways directo)
+//   Precio típico: €1,500–1,580 EUR (KLM/Air France, 1 escala)
+//   Precio alto:   €1,650+ EUR
+//
+// Thresholds de alerta:
+//   ✈️  Buen precio  ≤ €1,350 EUR  → precio por debajo del mínimo histórico
+//   🔥🔥 Oferta       ≤ €1,200 EUR  → muy por debajo del mínimo real
+//   🔥🔥🔥 Ofertón    ≤ €1,000 EUR  → tarifa error / promo excepcional
+
+const ROUTES = [
+  {
+    origin: 'FCO',
+    destination: 'TYO',
+    name: 'Roma (FCO) → Tokio',
+    departureMonth: '2026-09',
+    durationDays: 10,
+    thresholds: {
+      good: 1350,   // ✈️  Buen precio
+      deal: 1200,   // 🔥🔥 Oferta
+      steal: 1000,  // 🔥🔥🔥 Ofertón
+    },
+  },
+  {
+    origin: 'MXP',
+    destination: 'TYO',
+    name: 'Milán (MXP) → Tokio',
+    departureMonth: '2026-09',
+    durationDays: 10,
+    thresholds: {
+      good: 1350,
+      deal: 1200,
+      steal: 1000,
+    },
+  },
 ];
 
+function getAlertLevel(price, thresholds) {
+  if (price <= thresholds.steal) return { emoji: '🔥🔥🔥', label: 'OFERTÓN' };
+  if (price <= thresholds.deal)  return { emoji: '🔥🔥',   label: 'OFERTA'   };
+  if (price <= thresholds.good)  return { emoji: '✈️',     label: 'Buen precio' };
+  return null; // sin alerta
+}
+
 function buildAlertMessage(route, price) {
-  const savings = PRICE_THRESHOLD - price;
-  const savingsPercent = ((savings / PRICE_THRESHOLD) * 100).toFixed(1);
-  
-  return `✈️ *ALERTA DE VUELO BARATO*\n\n` +
+  const level = getAlertLevel(price, route.thresholds);
+  const emoji = level ? level.emoji : '✈️';
+  const label = level ? level.label : 'Precio bajo';
+
+  return (
+    `${emoji} *ALERTA DE VUELO — ${label}*\n\n` +
     `*Ruta:* ${route.name}\n` +
+    `*Período:* ${route.departureMonth} · ida y vuelta ~${route.durationDays} días\n` +
     `*Precio:* €${price} EUR\n` +
-    `*Umbral:* €${PRICE_THRESHOLD} EUR\n` +
-    `*Ahorro:* €${savings} (${savingsPercent}%)\n\n` +
-    `🔗 Ver en Skyscanner\n\n` +
-    `⚠️ Verifica condiciones y equipaje antes de comprar.`;
+    `*Umbral buen precio:* €${route.thresholds.good}\n` +
+    `*Umbral oferta:* €${route.thresholds.deal}\n` +
+    `*Umbral ofertón:* €${route.thresholds.steal}\n\n` +
+    `🔗 Buscar en Skyscanner\n\n` +
+    `⚠️ Verificá condiciones y equipaje antes de comprar.`
+  );
 }
 
 async function sendAlert(route, price) {
@@ -50,16 +92,16 @@ async function sendAlert(route, price) {
 
 async function checkPrices() {
   console.log(`\n📍 Verificando precios a las ${new Date().toLocaleTimeString('es-ES')}...\n`);
-  
+
   if (!await initDb()) {
     console.error('Error inicializando base de datos');
     return;
   }
 
-  for (const route of routes) {
+  for (const route of ROUTES) {
     try {
       const { url, minPrice, flights } = await scrapeSkyscanner(route.origin, route.destination);
-      
+
       if (minPrice === null) {
         console.log(`❌ ${route.name}: Sin precios encontrados`);
         continue;
@@ -72,11 +114,12 @@ async function checkPrices() {
       // Obtener último precio para comparar
       const lastPrice = await getLastPrice(`${route.origin}-${route.destination}`, date);
 
-      // Enviar alerta si el precio está bajo del umbral
-      if (minPrice < PRICE_THRESHOLD) {
+      // Enviar alerta si el precio está bajo de alguno de los umbrales
+      const level = getAlertLevel(minPrice, route.thresholds);
+      if (level) {
         await sendAlert(route, minPrice);
       } else {
-        console.log(`${route.name}: €${minPrice} (Umbral: €${PRICE_THRESHOLD})`);
+        console.log(`${route.name}: €${minPrice} (sin alerta — umbral: €${route.thresholds.good})`);
       }
     } catch (error) {
       console.error(`Error procesando ${route.name}: ${error.message}`);
@@ -87,14 +130,14 @@ async function checkPrices() {
 }
 
 // Verificación inicial
-console.log('🛫 Flight Price Bot iniciado');
-console.log(`⏱️ Chequeos cada 15 minutos`);
-console.log(`💰 Umbral: €${PRICE_THRESHOLD} EUR\n`);
+console.log('🛫 Flight Price Bot iniciado — Italia → Tokio (sep/oct 2026)');
+console.log('⏱️  Chequeos cada 30 minutos');
+console.log('💰 Thresholds: ✈️ ≤€1,350 | 🔥🔥 ≤€1,200 | 🔥🔥🔥 ≤€1,000\n');
 
 checkPrices();
 
 // Programar chequeos automáticos
-cron.schedule('*/15 * * * *', () => {
+cron.schedule('*/30 * * * *', () => {
   checkPrices();
 });
 
