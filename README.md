@@ -477,3 +477,7 @@ Project Link: [https://github.com/RanuK12/crypto-analysis-dashboard](https://git
 - Plotly for interactive visualizations
 - Python-Telegram-Bot for bot integration
 - All contributors and supporters of the project
+
+## Licencia
+
+MIT — © 2026 Ranuk IT Solutions | ranuk.dev
